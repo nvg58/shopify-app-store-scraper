@@ -40,10 +40,14 @@ class AppStoreSpider(LastmodSpider):
         self.processed_reviews = pd.read_csv('{}{}{}'.format('./', WriteToCSV.OUTPUT_DIR, 'reviews.csv'))
 
         # Read app URLs from a file (e.g., app_urls.txt)
-        # Get the directory of the current spider file
+        # Get the directory of the current spider file                
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # Construct the path to app_urls.txt, going up one level and into the data directory
         file_path = os.path.join(current_dir, '..', 'data', 'app_urls.txt')
+        
+        print("Current directory:", os.getcwd())
+        print("Files in directory:", os.listdir(os.path.dirname(file_path)))
+        
         with open(file_path, 'r') as f:
             for line in f:
                 url = line.strip()
