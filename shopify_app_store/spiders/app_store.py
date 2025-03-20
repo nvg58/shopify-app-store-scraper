@@ -86,7 +86,7 @@ class AppStoreSpider(LastmodSpider):
 
         # Parse app details
         for scraped_item in self.parse_app(response):
-            self.logger.debug(f"parse yielding: {scraped_item}")
+            self.logger.info(f"parse yielding: {scraped_item}")
             if scraped_item is None:
                 raise ValueError("parse yielded None from parse_app")
             
@@ -94,7 +94,7 @@ class AppStoreSpider(LastmodSpider):
 
         # Request reviews page
         reviews_url = '{}{}'.format(app_url, '/reviews')
-        self.logger.debug(f"parse yielding request: {reviews_url}")
+        self.logger.info(f"parse yielding request: {reviews_url}")
         yield Request(reviews_url, callback=self.parse_reviews, 
                       meta={'app_id': app_id, 'skip_if_first_scraped': True})
 
@@ -144,7 +144,7 @@ class AppStoreSpider(LastmodSpider):
             benefit_item = KeyBenefit(app_id=app_id,
                              title=None,
                              description=benefit.css('::text').extract_first().strip())
-            self.logger.debug(f"parse_app yielding KeyBenefit: {benefit_item}")
+            self.logger.info(f"parse_app yielding KeyBenefit: {benefit_item}")
             if benefit_item is None:
                 raise ValueError("parse_app yielded None for KeyBenefit")
             yield benefit_item
@@ -185,7 +185,7 @@ class AppStoreSpider(LastmodSpider):
             lastmod=response.headers.get('Last-Modified', b'').decode('utf-8')  # Use header directly
         )
         
-        self.logger.debug(f"parse_app yielding App: {app_item}")
+        self.logger.info(f"parse_app yielding App: {app_item}")
         if app_item is None:
             raise ValueError("parse_app yielded None for App")
         yield app_item
@@ -244,7 +244,7 @@ class AppStoreSpider(LastmodSpider):
                     posted_at=posted_at,
                     content=content
                 )
-                self.logger.debug(f"parse_reviews yielding AppReview: {review_item}")
+                self.logger.info(f"parse_reviews yielding AppReview: {review_item}")
                 if review_item is None:
                     raise ValueError("parse_reviews yielded None for AppReview")
                 yield review_item
@@ -253,5 +253,5 @@ class AppStoreSpider(LastmodSpider):
             if next_page_url:
                 request = Request(next_page_url, callback=self.parse_reviews,
                             meta={'app_id': app_id, 'skip_if_first_scraped': False})
-                self.logger.debug(f"parse_reviews yielding request: {next_page_url}")
+                self.logger.info(f"parse_reviews yielding request: {next_page_url}")
                 yield request
