@@ -122,6 +122,8 @@ class WriteToCSV(object):
 
 class TextFilePipeline:
     def open_spider(self, spider):
+        # Initialize a set to track seen URLs for this spider
+        spider.seen_urls = set()
         # Get the filename from the spider's settings, default to 'output.txt' if not set
         filename = spider.settings.get('OUTPUT_FILE', 'output.txt')
         self.file = open(filename, 'w')
@@ -131,7 +133,13 @@ class TextFilePipeline:
         self.file.close()
 
     def process_item(self, item, spider):
-        # Extract the URL from the item and write it to the file
+        # Extract the URL from the item
         url = item['app_url']
-        self.file.write(url + '\n')
+        # Check if the URL has not been seen before
+        if url not in spider.seen_urls:
+            # Add the URL to the set of seen URLs
+            spider.seen_urls.add(url)
+            # Write the URL to the file followed by a newline
+            self.file.write(url + '\n')
+        # Return the item for further processing by other pipelines (if any)
         return item
