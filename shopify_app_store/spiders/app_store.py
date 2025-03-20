@@ -14,8 +14,11 @@ class AppStoreSpider(LastmodSpider):
     BASE_DOMAIN = "apps.shopify.com"
 
     name = 'app_store'
-
     allowed_domains = ['apps.shopify.com']
+    
+    custom_settings = {
+        'DOWNLOAD_DELAY': 1,  # 1 second delay
+    }
 
     # Apps that were already scraped
     processed_apps = {}
@@ -37,7 +40,11 @@ class AppStoreSpider(LastmodSpider):
         self.processed_reviews = pd.read_csv('{}{}{}'.format('./', WriteToCSV.OUTPUT_DIR, 'reviews.csv'))
 
         # Read app URLs from a file (e.g., app_urls.txt)
-        with open('app_urls.txt', 'r') as f:
+        # Get the directory of the current spider file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construct the path to app_urls.txt, going up one level and into the data directory
+        file_path = os.path.join(current_dir, '..', 'app_urls.txt')
+        with open(file_path, 'r') as f:
             for line in f:
                 url = line.strip()
                 if url:  # Skip empty lines
