@@ -206,7 +206,7 @@ class AppStoreSpider(LastmodSpider):
                 ]
                 if not existing_review.empty:
                     self.logger.info("The last review of app was already scraped, skipping the rest | App id: %s", app_id)
-                    return None
+                    return ''
 
             yield AppReview(
                 app_id=app_id,
