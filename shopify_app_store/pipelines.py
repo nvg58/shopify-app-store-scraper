@@ -54,8 +54,9 @@ class WriteToCSV(object):
 
         if self.is_empty('reviews.csv'):
             self.write_header('reviews.csv',
-                              ['app_id', 'author', 'rating', 'posted_at', 'body', 'helpful_count', 'developer_reply',
-                               'developer_reply_posted_at'])
+                              ['app_id', 'shop_name', 'country', 'usage_time', 'rating', 'posted_at', 'content', 
+                            #    'helpful_count', 'developer_reply', 'developer_reply_posted_at'
+                               ])
 
         if self.is_empty('apps_categories.csv'):
             self.write_header('apps_categories.csv', ['app_id', 'category_id'])
@@ -118,3 +119,19 @@ class WriteToCSV(object):
             return os.stat(file).st_size == 0
         except FileNotFoundError:
             return True
+
+class TextFilePipeline:
+    def open_spider(self, spider):
+        # Get the filename from the spider's settings, default to 'output.txt' if not set
+        filename = spider.settings.get('OUTPUT_FILE', 'output.txt')
+        self.file = open(filename, 'w')
+
+    def close_spider(self, spider):
+        # Close the file when the spider finishes
+        self.file.close()
+
+    def process_item(self, item, spider):
+        # Extract the URL from the item and write it to the file
+        url = item['app_url']
+        self.file.write(url + '\n')
+        return item

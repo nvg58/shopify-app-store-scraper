@@ -16,7 +16,7 @@ NEWSPIDER_MODULE = 'shopify_app_store.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'shopify_app_store dataset crawler (+https://www.kaggle.com/usernam3/shopify-app-store)'
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -66,6 +66,7 @@ CONCURRENT_REQUESTS = 4
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    'shopify_app_store.pipelines.WriteToCSV': 300,
+   'shopify_app_store.pipelines.TextFilePipeline': 300,
 }
 
 # Configure spider contracts

@@ -61,10 +61,12 @@ class AppCategory(scrapy.Item):
 
 class AppReview(scrapy.Item):
     app_id = scrapy.Field()
-    author = scrapy.Field()
+    shop_name = scrapy.Field()
+    country = scrapy.Field()
+    usage_time = scrapy.Field()
     rating = scrapy.Field()
     posted_at = scrapy.Field()
-    body = scrapy.Field()
-    helpful_count = scrapy.Field()
-    developer_reply = scrapy.Field()
-    developer_reply_posted_at = scrapy.Field()
+    content = scrapy.Field()
+    # helpful_count = scrapy.Field()
+    # developer_reply = scrapy.Field()
+    # developer_reply_posted_at = scrapy.Field()
