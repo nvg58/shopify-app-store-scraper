@@ -177,24 +177,21 @@ class AppStoreSpider(LastmodSpider):
         app_id = response.meta['app_id']
         skip_if_first_scraped = response.meta.get('skip_if_first_scraped', False)
 
-        for idx, review in enumerate(response.css('[data-merchant-review]')):
-            shop_name = review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
-            country = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[2]/text()').extract_first(default='').strip()
-            usage_time = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[3]/text()').extract_first(default='').strip()
-            rating = review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
-            
-            posted_at = review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip()
-            posted_at = posted_at.replace("Edited", "").strip()
-            
-            raw_body = BeautifulSoup(review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
-            for button in raw_body.find_all('button'):
-                button.decompose()
-            content = raw_body.get_text().strip()
-            # helpful_count = review.css('.review-helpfulness .review-helpfulness__helpful-count ::text').extract_first()
-            # developer_reply = BeautifulSoup(review.css('[data-reply-id]').extract_first(default=''), features='lxml').get_text().strip()
-            # developer_reply_posted_at = review.css('[id^=review-reply-] .tw-text-fg-tertiary::text').extract_first(default='').strip().split('\n')[-1].strip()
+        skip_reviews = False
+        if skip_if_first_scraped:
+            reviews = response.css('[data-merchant-review]')
+            if reviews:
+                first_review = reviews[0]
+                shop_name = first_review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
+                country = first_review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[2]/text()').extract_first(default='').strip()
+                usage_time = first_review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[3]/text()').extract_first(default='').strip()
+                rating = first_review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
+                posted_at = first_review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
+                raw_body = BeautifulSoup(first_review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
+                for button in raw_body.find_all('button'):
+                    button.decompose()
+                content = raw_body.get_text().strip()
 
-            if skip_if_first_scraped and idx == 0:
                 existing_review = self.processed_reviews.loc[
                     (self.processed_reviews['app_id'] == app_id) &
                     (self.processed_reviews['shop_name'] == shop_name) &
@@ -206,21 +203,31 @@ class AppStoreSpider(LastmodSpider):
                 ]
                 if not existing_review.empty:
                     self.logger.info("The last review of app was already scraped, skipping the rest | App id: %s", app_id)
-                    return ''
+                    skip_reviews = True
 
-            yield AppReview(
-                app_id=app_id,
-                shop_name=shop_name,
-                country=country,
-                usage_time=usage_time,
-                rating=rating,
-                posted_at=posted_at,
-                content=content
-                # developer_reply=developer_reply,
-                # developer_reply_posted_at=developer_reply_posted_at
-            )
+        if not skip_reviews:
+            for review in response.css('[data-merchant-review]'):
+                shop_name = review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
+                country = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[2]/text()').extract_first(default='').strip()
+                usage_time = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[3]/text()').extract_first(default='').strip()
+                rating = review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
+                posted_at = review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
+                raw_body = BeautifulSoup(review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
+                for button in raw_body.find_all('button'):
+                    button.decompose()
+                content = raw_body.get_text().strip()
 
-        next_page_url = response.css('[rel="next"]::attr(href)').extract_first()
-        if next_page_url:
-            yield Request(next_page_url, callback=self.parse_reviews,
-                          meta={'app_id': app_id, 'skip_if_first_scraped': False})
+                yield AppReview(
+                    app_id=app_id,
+                    shop_name=shop_name,
+                    country=country,
+                    usage_time=usage_time,
+                    rating=rating,
+                    posted_at=posted_at,
+                    content=content
+                )
+
+            next_page_url = response.css('[rel="next"]::attr(href)').extract_first()
+            if next_page_url:
+                yield Request(next_page_url, callback=self.parse_reviews,
+                            meta={'app_id': app_id, 'skip_if_first_scraped': False})
