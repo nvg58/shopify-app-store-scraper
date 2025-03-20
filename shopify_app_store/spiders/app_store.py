@@ -204,8 +204,8 @@ class AppStoreSpider(LastmodSpider):
         reviews = response.css('[data-merchant-review]')
         for review in reviews:
             shop_name = review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
-            country = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(2)').extract_first(default='').get()
-            usage_time = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(3)').extract_first(default='').get()
+            country = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(2) ::text').get()
+            usage_time = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(3) ::text').get()
             rating = review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
             posted_at = review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
             raw_body = BeautifulSoup(review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
