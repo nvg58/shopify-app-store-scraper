@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from scrapy import Request
 import re
+import os
 import uuid
 from .lastmod_spider import LastmodSpider
 from ..items import App, KeyBenefit, PricingPlan, PricingPlanFeature, Category, AppCategory, AppReview
@@ -22,6 +23,11 @@ class AppStoreSpider(LastmodSpider):
     processed_reviews = {}
 
     def start_requests(self):
+        # Ensure OUTPUT_DIR exists
+        output_dir = WriteToCSV.OUTPUT_DIR
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
         # Load existing apps from CSV
         apps = pd.read_csv('{}{}{}'.format('./', WriteToCSV.OUTPUT_DIR, 'apps.csv'))
         for _, app in apps.iterrows():

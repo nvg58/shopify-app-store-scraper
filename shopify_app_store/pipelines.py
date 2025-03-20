@@ -19,6 +19,10 @@ class WriteToCSV(object):
     OUTPUT_DIR = './output/'
 
     def open_spider(self, spider):
+        output_dir = self.OUTPUT_DIR
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
         self.write_file_headers()
 
     def process_item(self, item, spider):
