@@ -8,5 +8,7 @@ setup(
     package_data={
         'shopify_app_store': ['app_urls.txt'],
     },
-    entry_points = {'scrapy': ['settings = shopify_app_store.settings']},
+    entry_points = {
+        'scrapy': ['settings = shopify_app_store.settings']
+    },
 )
