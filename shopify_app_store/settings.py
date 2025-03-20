@@ -9,12 +9,13 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-LOG_LEVEL = 'DEBUG'
-
 BOT_NAME = 'shopify_app_store'
 
 SPIDER_MODULES = ['shopify_app_store.spiders']
 NEWSPIDER_MODULE = 'shopify_app_store.spiders'
+
+
+LOG_LEVEL = 'DEBUG'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
