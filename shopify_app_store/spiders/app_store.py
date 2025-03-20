@@ -183,8 +183,8 @@ class AppStoreSpider(LastmodSpider):
             if reviews:
                 first_review = reviews[0]
                 shop_name = first_review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
-                country = first_review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[2]/text()').extract_first(default='').strip()
-                usage_time = first_review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[3]/text()').extract_first(default='').strip()
+                country = first_review.css('div.tw-order-2.lg:tw-order-1.lg:tw-row-span-2.tw-mt-md.md:tw-mt-0.tw-space-y-1.md:tw-space-y-2.tw-text-fg-tertiary.tw-text-body-xs ::text').getall()[1].strip()
+                usage_time = first_review.css('div.tw-order-2.lg:tw-order-1.lg:tw-row-span-2.tw-mt-md.md:tw-mt-0.tw-space-y-1.md:tw-space-y-2.tw-text-fg-tertiary.tw-text-body-xs ::text').getall()[2].strip()
                 rating = first_review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
                 posted_at = first_review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
                 raw_body = BeautifulSoup(first_review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
