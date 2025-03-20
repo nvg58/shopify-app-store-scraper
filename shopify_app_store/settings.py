@@ -66,7 +66,6 @@ CONCURRENT_REQUESTS = 4
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    'shopify_app_store.pipelines.WriteToCSV': 300,
-   'shopify_app_store.pipelines.TextFilePipeline': 300,
 }
 
 # Configure spider contracts

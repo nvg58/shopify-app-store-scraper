@@ -5,8 +5,12 @@ class AppUrlsSpider(scrapy.Spider):
     start_urls = ['https://apps.shopify.com/categories/finding-products-sourcing-options-print-on-demand-pod/all']
     
     custom_settings = {
-        'OUTPUT_FILE': 'app_urls.txt'  # Replace with your desired default filename
+        'OUTPUT_FILE': 'app_urls.txt',  # Replace with your desired default filename
+        'ITEM_PIPELINES': {
+            'shopify_app_store.pipelines.TextFilePipeline': 300,
+        }
     }
+    
 
     def parse(self, response):
         for url in response.xpath('//*[@data-controller="app-card"]/@data-app-card-app-link-value'):
