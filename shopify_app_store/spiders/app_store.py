@@ -3,6 +3,7 @@ from scrapy import Request
 import re
 import os
 import uuid
+import logging
 from .lastmod_spider import LastmodSpider
 from ..items import App, KeyBenefit, PricingPlan, PricingPlanFeature, Category, AppCategory, AppReview
 from bs4 import BeautifulSoup
@@ -12,8 +13,10 @@ from ..pipelines import WriteToCSV
 
 class AppStoreSpider(LastmodSpider):
     BASE_DOMAIN = "apps.shopify.com"
-
+    
     name = 'app_store'
+    logger = logging.getLogger(name)
+    
     allowed_domains = ['apps.shopify.com']
     
     custom_settings = {
@@ -83,10 +86,15 @@ class AppStoreSpider(LastmodSpider):
 
         # Parse app details
         for scraped_item in self.parse_app(response):
+            self.logger.debug(f"parse yielding: {scraped_item}")
+            if scraped_item is None:
+                raise ValueError("parse yielded None from parse_app")
+            
             yield scraped_item
 
         # Request reviews page
         reviews_url = '{}{}'.format(app_url, '/reviews')
+        self.logger.debug(f"parse yielding request: {reviews_url}")
         yield Request(reviews_url, callback=self.parse_reviews, 
                       meta={'app_id': app_id, 'skip_if_first_scraped': True})
 
@@ -133,9 +141,13 @@ class AppStoreSpider(LastmodSpider):
 
         # Key benefits
         for benefit in response.css('#app-details>ul>li'):
-            yield KeyBenefit(app_id=app_id,
+            benefit_item = KeyBenefit(app_id=app_id,
                              title=None,
                              description=benefit.css('::text').extract_first().strip())
+            self.logger.debug(f"parse_app yielding KeyBenefit: {benefit_item}")
+            if benefit_item is None:
+                raise ValueError("parse_app yielded None for KeyBenefit")
+            yield benefit_item
 
         # Pricing plans and features
         for pricing_plan in response.css('.app-details-pricing-plan-card'):
@@ -157,7 +169,7 @@ class AppStoreSpider(LastmodSpider):
             yield AppCategory(app_id=app_id, category_id=category_id)
 
         # App item
-        yield App(
+        app_item = App(
             id=app_id,
             url=url,
             title=title,
@@ -172,6 +184,11 @@ class AppStoreSpider(LastmodSpider):
             pricing_hint=pricing_hint,
             lastmod=response.headers.get('Last-Modified', b'').decode('utf-8')  # Use header directly
         )
+        
+        self.logger.debug(f"parse_app yielding App: {app_item}")
+        if app_item is None:
+            raise ValueError("parse_app yielded None for App")
+        yield app_item
 
     def parse_reviews(self, response):
         app_id = response.meta['app_id']
@@ -181,6 +198,7 @@ class AppStoreSpider(LastmodSpider):
         if skip_if_first_scraped:
             reviews = response.css('[data-merchant-review]')
             if reviews:
+                self.logger.info(f"Checking existing reviews for app_id: {app_id}")
                 first_review = reviews[0]
                 shop_name = first_review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
                 country = first_review.css('div.tw-order-2.lg:tw-order-1.lg:tw-row-span-2.tw-mt-md.md:tw-mt-0.tw-space-y-1.md:tw-space-y-2.tw-text-fg-tertiary.tw-text-body-xs ::text').getall()[1].strip()
@@ -217,7 +235,7 @@ class AppStoreSpider(LastmodSpider):
                     button.decompose()
                 content = raw_body.get_text().strip()
 
-                yield AppReview(
+                review_item = AppReview(
                     app_id=app_id,
                     shop_name=shop_name,
                     country=country,
@@ -226,8 +244,14 @@ class AppStoreSpider(LastmodSpider):
                     posted_at=posted_at,
                     content=content
                 )
+                self.logger.debug(f"parse_reviews yielding AppReview: {review_item}")
+                if review_item is None:
+                    raise ValueError("parse_reviews yielded None for AppReview")
+                yield review_item
 
             next_page_url = response.css('[rel="next"]::attr(href)').extract_first()
             if next_page_url:
-                yield Request(next_page_url, callback=self.parse_reviews,
+                request = Request(next_page_url, callback=self.parse_reviews,
                             meta={'app_id': app_id, 'skip_if_first_scraped': False})
+                self.logger.debug(f"parse_reviews yielding request: {next_page_url}")
+                yield request
