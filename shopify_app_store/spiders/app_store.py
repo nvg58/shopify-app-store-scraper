@@ -86,7 +86,7 @@ class AppStoreSpider(LastmodSpider):
 
         # Parse app details
         for scraped_item in self.parse_app(response):
-            self.logger.info(f"parse yielding: {scraped_item}")
+            self.logger.info(f"parse yielding: scraped_item")
             if scraped_item is None:
                 raise ValueError("parse yielded None from parse_app")
             
@@ -95,8 +95,11 @@ class AppStoreSpider(LastmodSpider):
         # Request reviews page
         reviews_url = '{}{}'.format(app_url, '/reviews')
         self.logger.info(f"parse yielding request: {reviews_url}")
-        yield Request(reviews_url, callback=self.parse_reviews, 
+        review_request = Request(reviews_url, callback=self.parse_reviews, 
                       meta={'app_id': app_id, 'skip_if_first_scraped': True})
+        if review_request is None:
+                raise ValueError("parse yielded None for review_request")
+        yield review_request
 
     @staticmethod
     def close(spider, reason):
@@ -124,134 +127,109 @@ class AppStoreSpider(LastmodSpider):
         return super().close(spider, reason)
 
     def parse_app(self, response):
-        app_id = response.meta.get('app_id')
-        url = response.request.url
-        title = response.css('#adp-hero h1 ::text').extract_first(default='').strip()
-        developer = response.css('#adp-hero a[href^=\/partners]::text').extract_first().strip()
-        developer_link = 'https://{}{}'.format(self.BASE_DOMAIN, 
-                                               response.css('#adp-hero a[href^=\/partners]::attr(href)').extract_first().strip())
-        icon = response.css('#adp-hero img::attr(src)').extract_first()
-        rating = response.css('#adp-hero dd > span.tw-text-fg-secondary ::text').extract_first()
-        reviews_count_raw = response.css('#reviews-link::text').extract_first(default='0 Reviews')
-        reviews_count = int(''.join(re.findall(r'\d+', reviews_count_raw)))
-        description_raw = response.css('#app-details').extract_first()
-        description = ' '.join(response.css('#app-details ::text').extract()).strip()
-        tagline = None
-        pricing_hint = response.css('#adp-hero > div > div.tw-grow.tw-flex.tw-flex-col.tw-gap-xl > dl > div:nth-child(1) > dd > div.tw-hidden.sm\:tw-block.tw-text-pretty ::text').extract_first().strip()
+        try:
+            app_id = response.meta.get('app_id')
+            url = response.request.url
+            title = response.css('#adp-hero h1 ::text').extract_first(default='').strip()
+            developer = response.css('#adp-hero a[href^=\/partners]::text').extract_first().strip()
+            developer_link = 'https://{}{}'.format(self.BASE_DOMAIN, 
+                                                response.css('#adp-hero a[href^=\/partners]::attr(href)').extract_first().strip())
+            icon = response.css('#adp-hero img::attr(src)').extract_first()
+            rating = response.css('#adp-hero dd > span.tw-text-fg-secondary ::text').extract_first()
+            reviews_count_raw = response.css('#reviews-link::text').extract_first(default='0 Reviews')
+            reviews_count = int(''.join(re.findall(r'\d+', reviews_count_raw)))
+            description_raw = response.css('#app-details').extract_first()
+            description = ' '.join(response.css('#app-details ::text').extract()).strip()
+            tagline = None
+            pricing_hint = response.css('#adp-hero > div > div.tw-grow.tw-flex.tw-flex-col.tw-gap-xl > dl > div:nth-child(1) > dd > div.tw-hidden.sm\:tw-block.tw-text-pretty ::text').extract_first().strip()
 
-        # Key benefits
-        for benefit in response.css('#app-details>ul>li'):
-            benefit_item = KeyBenefit(app_id=app_id,
-                             title=None,
-                             description=benefit.css('::text').extract_first().strip())
-            self.logger.info(f"parse_app yielding KeyBenefit: {benefit_item}")
-            if benefit_item is None:
-                raise ValueError("parse_app yielded None for KeyBenefit")
-            yield benefit_item
+            # Key benefits
+            for benefit in response.css('#app-details>ul>li'):
+                benefit_item = KeyBenefit(app_id=app_id,
+                                title=None,
+                                description=benefit.css('::text').extract_first().strip())
+                self.logger.info(f"parse_app yielding KeyBenefit: {benefit_item}")
+                if benefit_item is None:
+                    raise ValueError("parse_app yielded None for KeyBenefit")
+                yield benefit_item
 
-        # Pricing plans and features
-        for pricing_plan in response.css('.app-details-pricing-plan-card'):
-            pricing_plan_id = str(uuid.uuid4())
-            yield PricingPlan(id=pricing_plan_id,
-                              app_id=app_id,
-                              title=pricing_plan.css('[data-test-id="name"] ::text').extract_first(default='').strip(),
-                              price=pricing_plan.css('.app-details-pricing-format-group::attr(aria-label)').extract_first().strip())
-            for feature in pricing_plan.css('ul[data-test-id="features"] li::text').extract():
-                feature_text = feature.strip()
-                if feature_text:
-                    yield PricingPlanFeature(pricing_plan_id=pricing_plan_id, app_id=app_id, feature=feature_text)
+            # Pricing plans and features
+            for pricing_plan in response.css('.app-details-pricing-plan-card'):
+                pricing_plan_id = str(uuid.uuid4())
+                yield PricingPlan(id=pricing_plan_id,
+                                app_id=app_id,
+                                title=pricing_plan.css('[data-test-id="name"] ::text').extract_first(default='').strip(),
+                                price=pricing_plan.css('.app-details-pricing-format-group::attr(aria-label)').extract_first().strip())
+                for feature in pricing_plan.css('ul[data-test-id="features"] li::text').extract():
+                    feature_text = feature.strip()
+                    if feature_text:
+                        yield PricingPlanFeature(pricing_plan_id=pricing_plan_id, app_id=app_id, feature=feature_text)
 
-        # Categories
-        for category_raw in response.css('#adp-details-section a[href^="https://apps.shopify.com/categories"]::text').extract():
-            category = category_raw.strip()
-            category_id = category.lower().encode()
-            yield Category(id=category_id, title=category)
-            yield AppCategory(app_id=app_id, category_id=category_id)
+            # Categories
+            for category_raw in response.css('#adp-details-section a[href^="https://apps.shopify.com/categories"]::text').extract():
+                category = category_raw.strip()
+                category_id = category.lower().encode()
+                yield Category(id=category_id, title=category)
+                yield AppCategory(app_id=app_id, category_id=category_id)
 
-        # App item
-        app_item = App(
-            id=app_id,
-            url=url,
-            title=title,
-            developer=developer,
-            developer_link=developer_link,
-            icon=icon,
-            rating=rating,
-            reviews_count=reviews_count,
-            description_raw=description_raw,
-            description=description,
-            tagline=tagline,
-            pricing_hint=pricing_hint,
-            lastmod=response.headers.get('Last-Modified', b'').decode('utf-8')  # Use header directly
-        )
-        
-        self.logger.info(f"parse_app yielding App: {app_item}")
-        if app_item is None:
-            raise ValueError("parse_app yielded None for App")
-        yield app_item
+            # App item
+            app_item = App(
+                id=app_id,
+                url=url,
+                title=title,
+                developer=developer,
+                developer_link=developer_link,
+                icon=icon,
+                rating=rating,
+                reviews_count=reviews_count,
+                description_raw=description_raw,
+                description=description,
+                tagline=tagline,
+                pricing_hint=pricing_hint,
+                lastmod=response.headers.get('Last-Modified', b'').decode('utf-8')  # Use header directly
+            )
+            
+            if app_item is None:
+                raise ValueError("parse_app yielded None for App")
+            yield app_item
+        except Exception as e:
+            self.logger.error(f"Error in parse_app for {response.url}: {str(e)}")
+            # Optionally yield a dummy item to avoid empty yield
+            yield {"error": str(e), "url": response.url}
 
     def parse_reviews(self, response):
         app_id = response.meta['app_id']
         skip_if_first_scraped = response.meta.get('skip_if_first_scraped', False)
 
-        skip_reviews = False
-        if skip_if_first_scraped:
-            reviews = response.css('[data-merchant-review]')
-            if reviews:
-                self.logger.info(f"Checking existing reviews for app_id: {app_id}")
-                first_review = reviews[0]
-                shop_name = first_review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
-                country = first_review.css('div.tw-order-2.lg:tw-order-1.lg:tw-row-span-2.tw-mt-md.md:tw-mt-0.tw-space-y-1.md:tw-space-y-2.tw-text-fg-tertiary.tw-text-body-xs ::text').getall()[1].strip()
-                usage_time = first_review.css('div.tw-order-2.lg:tw-order-1.lg:tw-row-span-2.tw-mt-md.md:tw-mt-0.tw-space-y-1.md:tw-space-y-2.tw-text-fg-tertiary.tw-text-body-xs ::text').getall()[2].strip()
-                rating = first_review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
-                posted_at = first_review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
-                raw_body = BeautifulSoup(first_review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
-                for button in raw_body.find_all('button'):
-                    button.decompose()
-                content = raw_body.get_text().strip()
+        reviews = response.css('[data-merchant-review]')
+        for review in reviews:
+            shop_name = review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
+            country = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(2)').extract_first(default='').get()
+            usage_time = review.css('div.tw-order-2.tw-text-body-xs div:nth-child(3)').extract_first(default='').get()
+            rating = review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
+            posted_at = review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
+            raw_body = BeautifulSoup(review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
+            for button in raw_body.find_all('button'):
+                button.decompose()
+            content = raw_body.get_text().strip()
 
-                existing_review = self.processed_reviews.loc[
-                    (self.processed_reviews['app_id'] == app_id) &
-                    (self.processed_reviews['shop_name'] == shop_name) &
-                    (self.processed_reviews['country'] == country) &
-                    (self.processed_reviews['usage_time'] == usage_time) &
-                    (self.processed_reviews['rating'] == int(rating)) &
-                    (self.processed_reviews['posted_at'] == posted_at) &
-                    (self.processed_reviews['content'] == content)
-                ]
-                if not existing_review.empty:
-                    self.logger.info("The last review of app was already scraped, skipping the rest | App id: %s", app_id)
-                    skip_reviews = True
+            review_item = AppReview(
+                app_id=app_id,
+                shop_name=shop_name,
+                country=country,
+                usage_time=usage_time,
+                rating=rating,
+                posted_at=posted_at,
+                content=content
+            )
+            self.logger.info(f"parse_reviews yielding AppReview: {review_item}")
+            if review_item is None:
+                raise ValueError("parse_reviews yielded None for AppReview")
+            yield review_item
 
-        if not skip_reviews:
-            for review in response.css('[data-merchant-review]'):
-                shop_name = review.css('div.tw-text-heading-xs.tw-text-fg-primary.tw-overflow-hidden.tw-text-ellipsis.tw-whitespace-nowrap ::text').extract_first(default='').strip()
-                country = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[2]/text()').extract_first(default='').strip()
-                usage_time = review.xpath('//*[@id="arp-reviews"]/div/div[3]/div[2]/div[3]/div[2]/div[1]/div[2]/div[3]/text()').extract_first(default='').strip()
-                rating = review.css('[aria-label]::attr(aria-label)').extract_first(default='').strip().split()[0]
-                posted_at = review.css('div.tw-flex.tw-items-center.tw-justify-between.tw-mb-md > div.tw-text-body-xs.tw-text-fg-tertiary ::text').extract_first(default='').strip().replace("Edited", "").strip()
-                raw_body = BeautifulSoup(review.css('[data-truncate-review],[data-truncate-content-copy]').extract_first(), features='lxml')
-                for button in raw_body.find_all('button'):
-                    button.decompose()
-                content = raw_body.get_text().strip()
-
-                review_item = AppReview(
-                    app_id=app_id,
-                    shop_name=shop_name,
-                    country=country,
-                    usage_time=usage_time,
-                    rating=rating,
-                    posted_at=posted_at,
-                    content=content
-                )
-                self.logger.info(f"parse_reviews yielding AppReview: {review_item}")
-                if review_item is None:
-                    raise ValueError("parse_reviews yielded None for AppReview")
-                yield review_item
-
-            next_page_url = response.css('[rel="next"]::attr(href)').extract_first()
-            if next_page_url:
-                request = Request(next_page_url, callback=self.parse_reviews,
-                            meta={'app_id': app_id, 'skip_if_first_scraped': False})
-                self.logger.info(f"parse_reviews yielding request: {next_page_url}")
-                yield request
+        next_page_url = response.css('[rel="next"]::attr(href)').extract_first()
+        if next_page_url:
+            request = Request(next_page_url, callback=self.parse_reviews,
+                        meta={'app_id': app_id, 'skip_if_first_scraped': False})
+            self.logger.info(f"parse_reviews yielding request: {next_page_url}")
+            yield request
